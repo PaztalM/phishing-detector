@@ -13,6 +13,8 @@ KNOWN_BRANDS = {
 
 SUSPICIOUS_TLDS = {"xyz", "top", "click", "zip"}
 
+LOOKALIKE_CHARS = {"0": "o", "1": "l", "3": "e", "5": "s", "rn": "m", "vv": "w"}
+
 #finds the links in the text
 def find_links(text):
     return re.findall(r"https?://[^\s]+", text)
@@ -58,7 +60,12 @@ def check_link(link):
         reasons.append(f"suspicious ending .{host.split('.')[-1]}")
 
     return reasons
-    
+
+def normalize(name):
+    for fake, real in LOOKALIKE_CHARS.items():
+        name = name.replace(fake, real)
+    return name
+
 def main():
     path = sys.argv[1]
     with open(path, encoding="utf-8") as f:
@@ -68,6 +75,8 @@ def main():
     display_name, address = parseaddr(msg.get("From", ""))
     print(f"Sender: name '{display_name}', address {address}")
     print()
+
+    print(f"  normalized: {normalize(address)}")
         
     links= find_links(text)
     print(f"Links: found {len(links)}")
