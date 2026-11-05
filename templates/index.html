@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {% if error %}
+    <p class="error">{{ error }}</p>
+  {% endif %}
+
+  <form action="/scan" method="post" enctype="multipart/form-data">
+    <p>Upload an email file (.txt or .eml):</p>
+    <input type="file" name="email_file" accept=".txt,.eml">
+
+    <p>Or paste the email here:</p>
+    <textarea name="email_text"></textarea>
+
+    <p><button type="submit">Scan</button></p>
+  </form>
+{% endblock %}
