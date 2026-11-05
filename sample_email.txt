@@ -1,0 +1,8 @@
+From: PayPal Security <security@paypa1-support.com>
+Subject: Your account will be suspended
+
+Dear customer,
+We noticed unusual activity. Verify your account immediately:
+http://192.168.4.20/login
+Or visit https://paypal.com.secure-check.xyz/verify
+Thank you.
