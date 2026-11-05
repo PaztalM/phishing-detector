@@ -117,26 +117,23 @@ def check_wording(subject, body):
             reasons.append(f"{category}: {', '.join(found)}")
     return reasons
 
+def print_reasons(title, reasons):
+    print(f"{title}:")
+    if reasons:
+        for r in reasons:
+            print(f"  - {r}")
+    else:
+        print("  ok")
+
 def main():
     path = sys.argv[1]
     with open(path, encoding="utf-8") as f:
         text = f.read()
 
     msg = email.message_from_string(text)
+    print_reasons("Sender", check_sender(msg.get("From", "")))
+    print_reasons("Wording", check_wording(msg.get("Subject", ""), get_body(msg)))
 
-    print(check_wording(msg.get("Subject", ""), get_body(msg)))
-    print()
-    
-    sender_reasons = check_sender(msg.get("From", ""))
-    print("Sender:")
-    if sender_reasons:
-        for r in sender_reasons:
-            print(f"  - {r}")
-    else:
-        print("  ok")
-    print()
-
-        
     links= find_links(text)
     print(f"Links: found {len(links)}")
     for link in links:
