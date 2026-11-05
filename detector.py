@@ -23,6 +23,8 @@ SUSPICIOUS_PHRASES = {
     "generic greeting": ["dear customer", "dear user", "dear account holder"],
 }
 
+DANGEROUS_EXTENSIONS = {"exe", "scr", "js", "vbs", "bat", "cmd", "msi", "ps1", "jar"}
+
 #finds the links in the text
 def find_links(text):
     return re.findall(r"https?://[^\s]+", text)
@@ -125,6 +127,16 @@ def get_attachments(msg):
             names.append(filename)
     return names
 
+def check_attachment(filename):
+    reasons = []
+    parts = filename.lower().split(".")
+    ext = parts[-1] if len(parts) > 1 else ""
+
+    if ext in DANGEROUS_EXTENSIONS:
+        reasons.append(f"dangerous file type .{ext}")
+
+    return reasons
+
 def print_reasons(title, reasons):
     print(f"{title}:")
     if reasons:
@@ -142,7 +154,8 @@ def main():
     print_reasons("Sender", check_sender(msg.get("From", "")))
     print_reasons("Wording", check_wording(msg.get("Subject", ""), get_body(msg)))
 
-    print("Attachments:", get_attachments(msg))
+    for name in get_attachments(msg):
+        print(name, check_attachment(name))
 
     links= find_links(text)
     print(f"Links: found {len(links)}")
