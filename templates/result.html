@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="banner {{ result.level }}">
+    <h2>{{ "LIKELY PHISHING" if result.is_phishing else "Probably safe" }}</h2>
+    <p>Score {{ result.score }}/100, risk {{ result.level }}</p>
+    {% if result.level == "medium" %}
+      <p>Some warning signs were found. Check carefully before you click or open anything.</p>
+    {% endif %}
+  </div>
+
+  <p><a href="/">Scan another email</a></p>
+{% endblock %}
