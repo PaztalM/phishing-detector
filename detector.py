@@ -61,11 +61,13 @@ def check_link(link):
 
     return reasons
 
+#normalize the name by replacing lookalike characters with their real counterparts
 def normalize(name):
     for fake, real in LOOKALIKE_CHARS.items():
         name = name.replace(fake, real)
     return name
 
+#check the sender's email address and display name for suspicious characteristics
 def check_sender(from_header):
     reasons = []
     display_name, address = parseaddr(from_header)
@@ -85,8 +87,18 @@ def check_sender(from_header):
 
         if brand in display_name.lower():
              reasons.append(f"display name '{display_name}' says {brand}, but the address is {address}")
-             
+
     return reasons
+
+#get the body of the email message, preferring text/plain parts
+def get_body(msg):
+    parts = []
+    for part in msg.walk():
+        if part.get_content_type() == "text/plain":
+            payload = part.get_payload(decode=True) or b""
+            charset = part.get_content_charset() or "utf-8"
+            parts.append(payload.decode(charset, errors="replace"))
+    return "\n".join(parts)
 
 def main():
     path = sys.argv[1]
@@ -95,6 +107,9 @@ def main():
 
     msg = email.message_from_string(text)
 
+    print("Body:")
+    print(get_body(msg))
+    
     sender_reasons = check_sender(msg.get("From", ""))
     print("Sender:")
     if sender_reasons:
