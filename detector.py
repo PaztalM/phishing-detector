@@ -29,6 +29,8 @@ DOCUMENT_EXTENSIONS = {"pdf", "doc", "docx", "xls", "xlsx", "jpg", "png", "txt"}
 MACRO_EXTENSIONS = {"docm", "xlsm", "pptm"}
 ARCHIVE_EXTENSIONS = {"zip", "rar", "7z", "iso"}
 
+WEIGHTS = {"sender": 30, "links": 25, "attachments": 30, "wording": 10}
+
 #finds the links in the text
 def find_links(text):
     return re.findall(r"https?://[^\s]+", text)
@@ -150,6 +152,16 @@ def check_attachment(filename):
 
     return reasons
 
+def calculate_score(results):
+    score = 0
+    score += len(results["sender"]) * WEIGHTS["sender"]
+    score += len(results["wording"]) * WEIGHTS["wording"]
+    for reasons in results["attachments"].values():
+        score += len(reasons) * WEIGHTS["attachments"]
+    for reasons in results["links"].values():
+        score += len(reasons) * WEIGHTS["links"]
+    return min(score, 100)        
+
 def scan_email(text):
     msg = email.message_from_string(text)
     results = {
@@ -158,6 +170,7 @@ def scan_email(text):
         "attachments": {name: check_attachment(name) for name in get_attachments(msg)},
         "links": {link: check_link(link) for link in find_links(text)},
     }
+    results["score"] = calculate_score(results)
     return results
 
 def print_reasons(title, reasons):
@@ -184,6 +197,9 @@ def main():
         text = f.read()
 
     result = scan_email(text)
+
+    print(f"Score: {result['score']}/100")
+
     print_reasons("Sender", result["sender"])
     print_reasons("Wording", result["wording"])
     print_items("Attachments", result["attachments"])
