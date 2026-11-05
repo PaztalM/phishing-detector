@@ -7,6 +7,7 @@ from detector import (
     check_wording,
     check_attachment,
     risk_level,
+    scan_email,
 )   
 
 def test_ip_link_is_detected():
@@ -58,4 +59,43 @@ def test_risk_levels():
     assert risk_level(29) == "low"
     assert risk_level(30) == "medium"
     assert risk_level(59) == "medium"
-    assert risk_level(60) == "high"    
+    assert risk_level(60) == "high"
+
+PHISHING = """From: PayPal Security <security@paypa1-support.com>
+Subject: Your account will be suspended
+
+Dear customer,
+Verify your account immediately:
+http://192.168.4.20/login
+"""
+
+LEGIT = """From: PayPal <service@paypal.com>
+Subject: Your receipt
+
+Hi Matan, thanks for shopping. https://www.paypal.com/activity
+"""
+
+NEWSLETTER = """From: Apple Pie Recipes <news@apple-pie.com>
+Subject: This week's recipes
+
+Hi Matan, here are three new pie recipes for the weekend.
+https://apple-pie.com/recipes
+"""
+
+
+def test_phishing_email_is_flagged():
+    result = scan_email(PHISHING)
+    assert result["is_phishing"]
+    assert result["level"] == "high"
+
+
+def test_legit_email_is_safe():
+    result = scan_email(LEGIT)
+    assert not result["is_phishing"]
+    assert result["score"] == 0
+
+
+def test_newsletter_is_warning_not_phishing():
+    result = scan_email(NEWSLETTER)
+    assert not result["is_phishing"]
+    assert result["level"] == "medium"
