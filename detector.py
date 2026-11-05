@@ -24,8 +24,10 @@ SUSPICIOUS_PHRASES = {
 }
 
 DANGEROUS_EXTENSIONS = {"exe", "scr", "js", "vbs", "bat", "cmd", "msi", "ps1", "jar"}
-
 DOCUMENT_EXTENSIONS = {"pdf", "doc", "docx", "xls", "xlsx", "jpg", "png", "txt"}
+
+MACRO_EXTENSIONS = {"docm", "xlsm", "pptm"}
+ARCHIVE_EXTENSIONS = {"zip", "rar", "7z", "iso"}
 
 #finds the links in the text
 def find_links(text):
@@ -137,9 +139,15 @@ def check_attachment(filename):
     if ext in DANGEROUS_EXTENSIONS:
         reasons.append(f"dangerous file type .{ext}")
 
-    if len(parts) > 2 and parts[-2] in DOCUMENT_EXTENSIONS and ext in DANGEROUS_EXTENSIONS:
+    if len(parts) > 2 and parts[-2] in DOCUMENT_EXTENSIONS and ext in DANGEROUS_EXTENSIONS | ARCHIVE_EXTENSIONS:
         reasons.append(f"double extension: looks like .{parts[-2]} but is really .{ext}")
-      
+
+    if ext in MACRO_EXTENSIONS:
+        reasons.append(f"Office file with macros .{ext}")
+
+    if ext in ARCHIVE_EXTENSIONS:
+        reasons.append(f"compressed archive .{ext} can hide other files")   
+
     return reasons
 
 def print_reasons(title, reasons):
