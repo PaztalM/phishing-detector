@@ -1,5 +1,7 @@
-import sys
 import re
+import sys
+import email
+from email.utils import parseaddr
 from urllib.parse import urlparse
 
 KNOWN_BRANDS = {
@@ -40,6 +42,7 @@ def brand_mismatch(host):
 def has_suspicious_tld(host):
     return host.split(".")[-1] in SUSPICIOUS_TLDS
 
+#check the link for suspicious characteristics and return reasons if any
 def check_link(link):
     reasons = []
     host = get_host(link)
@@ -61,6 +64,11 @@ def main():
     with open(path, encoding="utf-8") as f:
         text = f.read()
 
+    msg = email.message_from_string(text)
+    display_name, address = parseaddr(msg.get("From", ""))
+    print(f"Sender: name '{display_name}', address {address}")
+    print()
+        
     links= find_links(text)
     print(f"Links: found {len(links)}")
     for link in links:
