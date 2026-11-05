@@ -2,6 +2,13 @@ import sys
 import re
 from urllib.parse import urlparse
 
+KNOWN_BRANDS = {
+    "paypal": "paypal.com",
+    "microsoft": "microsoft.com",
+    "google": "google.com",
+    "apple": "apple.com",
+}
+
 #finds the links in the text
 def find_links(text):
     return re.findall(r"https?://[^\s]+", text)
@@ -10,12 +17,21 @@ def find_links(text):
 def is_ip_link(link):
     return re.match(r"https?://\d+\.\d+\.\d+\.\d+", link) is not None
 
+#returns the host of the link
 def get_host(link):
     return urlparse(link).hostname or ""
 
+#returns the real domain of the host
 def real_domain(host):
     parts = host.split(".")
     return ".".join(parts[-2:])
+
+def brand_mismatch(host):
+    domain = real_domain(host)
+    for brand, official in KNOWN_BRANDS.items():
+        if brand in host and domain != official:
+            return brand
+    return None
 
 def main():
     path = sys.argv[1]
@@ -27,10 +43,11 @@ def main():
     for link in links:
         host = get_host(link)
         print(f"  {link}")
-        print(f"    host: {host}")
-        print(f"    real domain: {real_domain(host)}")
         if is_ip_link(link):
             print("    - IP address instead of domain")
+        brand = brand_mismatch(host)
+        if brand:
+            print(f"    - pretends to be {brand}, real domain is {real_domain(host)}")
 
 
 if __name__ == "__main__":
