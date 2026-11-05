@@ -15,6 +15,14 @@ SUSPICIOUS_TLDS = {"xyz", "top", "click", "zip"}
 
 LOOKALIKE_CHARS = {"0": "o", "1": "l", "3": "e", "5": "s", "rn": "m", "vv": "w"}
 
+SUSPICIOUS_PHRASES = {
+    "urgency": ["immediately", "urgent", "within 24 hours", "act now", "as soon as possible"],
+    "threat": ["suspended", "locked", "unusual activity", "unauthorized", "will be closed"],
+    "credentials": ["verify your account", "confirm your password", "log in", "update your details", "security code"],
+    "money": ["payment", "invoice", "refund", "wire transfer", "gift card"],
+    "generic greeting": ["dear customer", "dear user", "dear account holder"],
+}
+
 #finds the links in the text
 def find_links(text):
     return re.findall(r"https?://[^\s]+", text)
@@ -100,6 +108,15 @@ def get_body(msg):
             parts.append(payload.decode(charset, errors="replace"))
     return "\n".join(parts)
 
+def check_wording(subject, body):
+    reasons = []
+    text = f"{subject}\n{body}".lower()
+    for category, phrases in SUSPICIOUS_PHRASES.items():
+        found = [p for p in phrases if re.search(r"\b" + re.escape(p) + r"\b", text)]
+        if found:
+            reasons.append(f"{category}: {', '.join(found)}")
+    return reasons
+
 def main():
     path = sys.argv[1]
     with open(path, encoding="utf-8") as f:
@@ -107,8 +124,8 @@ def main():
 
     msg = email.message_from_string(text)
 
-    print("Body:")
-    print(get_body(msg))
+    print(check_wording(msg.get("Subject", ""), get_body(msg)))
+    print()
     
     sender_reasons = check_sender(msg.get("From", ""))
     print("Sender:")
