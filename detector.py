@@ -94,7 +94,7 @@ def check_sender(from_header):
 
     for brand, official in KNOWN_BRANDS.items():
         if real == official:
-           continue
+            continue
         if brand in normalized:
             if brand in name_part:
                 reasons.append(f"domain {domain} uses the name {brand} but is not {official}")
@@ -102,11 +102,11 @@ def check_sender(from_header):
                 reasons.append(f"lookalike domain {domain} imitates {official}")     
 
         if brand in display_name.lower():
-             reasons.append(f"display name '{display_name}' says {brand}, but the address is {address}")
+            reasons.append(f"display name '{display_name}' says {brand}, but the address is {address}")
 
     return reasons
 
-#get the body of the email message, preferring text/plain parts
+#return only the text/plain parts of the email, joined together
 def get_body(msg):
     parts = []
     for part in msg.walk():
@@ -162,6 +162,13 @@ def calculate_score(results):
         score += len(reasons) * WEIGHTS["links"]
     return min(score, 100)        
 
+def risk_level(score):
+    if score >= 60:
+        return "high"
+    if score >= 30:
+        return "medium"
+    return "low"
+
 def scan_email(text):
     msg = email.message_from_string(text)
     results = {
@@ -171,6 +178,10 @@ def scan_email(text):
         "links": {link: check_link(link) for link in find_links(text)},
     }
     results["score"] = calculate_score(results)
+
+    results["level"] = risk_level(results["score"])
+    results["is_phishing"] = results["level"] == "high"
+
     return results
 
 def print_reasons(title, reasons):
@@ -198,7 +209,9 @@ def main():
 
     result = scan_email(text)
 
-    print(f"Score: {result['score']}/100")
+    verdict = "LIKELY PHISHING" if result["is_phishing"] else "probably safe"
+    print(f"Verdict: {verdict}  (score {result['score']}/100, risk {result['level']})")
+    print()
 
     print_reasons("Sender", result["sender"])
     print_reasons("Wording", result["wording"])
