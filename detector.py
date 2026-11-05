@@ -154,7 +154,8 @@ def check_attachment(filename):
 
 def calculate_score(results):
     score = 0
-    score += len(results["sender"]) * WEIGHTS["sender"]
+    if results["sender"]:
+        score += WEIGHTS["sender"]
     score += len(results["wording"]) * WEIGHTS["wording"]
     for reasons in results["attachments"].values():
         score += len(reasons) * WEIGHTS["attachments"]
