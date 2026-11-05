@@ -1,0 +1,30 @@
+From: Billing Team <billing@micr0soft-billing.top>
+Subject: Invoice for your recent payment
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="SEP"
+
+--SEP
+Content-Type: text/plain; charset="utf-8"
+
+Dear customer,
+Please open the attached invoice immediately.
+
+--SEP
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="invoice.pdf.exe"
+
+fake file
+
+--SEP
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="report.docm"
+
+fake file
+
+--SEP
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="terms.pdf"
+
+fake file
+
+--SEP--

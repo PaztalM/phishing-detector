@@ -117,6 +117,14 @@ def check_wording(subject, body):
             reasons.append(f"{category}: {', '.join(found)}")
     return reasons
 
+def get_attachments(msg):
+    names = []
+    for part in msg.walk():
+        filename = part.get_filename()
+        if filename:
+            names.append(filename)
+    return names
+
 def print_reasons(title, reasons):
     print(f"{title}:")
     if reasons:
@@ -133,6 +141,8 @@ def main():
     msg = email.message_from_string(text)
     print_reasons("Sender", check_sender(msg.get("From", "")))
     print_reasons("Wording", check_wording(msg.get("Subject", ""), get_body(msg)))
+
+    print("Attachments:", get_attachments(msg))
 
     links= find_links(text)
     print(f"Links: found {len(links)}")
