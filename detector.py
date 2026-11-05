@@ -83,6 +83,9 @@ def check_sender(from_header):
             else:
                 reasons.append(f"lookalike domain {domain} imitates {official}")     
 
+        if brand in display_name.lower():
+             reasons.append(f"display name '{display_name}' says {brand}, but the address is {address}")
+             
     return reasons
 
 def main():
