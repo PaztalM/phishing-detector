@@ -25,6 +25,8 @@ SUSPICIOUS_PHRASES = {
 
 DANGEROUS_EXTENSIONS = {"exe", "scr", "js", "vbs", "bat", "cmd", "msi", "ps1", "jar"}
 
+DOCUMENT_EXTENSIONS = {"pdf", "doc", "docx", "xls", "xlsx", "jpg", "png", "txt"}
+
 #finds the links in the text
 def find_links(text):
     return re.findall(r"https?://[^\s]+", text)
@@ -135,6 +137,9 @@ def check_attachment(filename):
     if ext in DANGEROUS_EXTENSIONS:
         reasons.append(f"dangerous file type .{ext}")
 
+    if len(parts) > 2 and parts[-2] in DOCUMENT_EXTENSIONS and ext in DANGEROUS_EXTENSIONS:
+        reasons.append(f"double extension: looks like .{parts[-2]} but is really .{ext}")
+      
     return reasons
 
 def print_reasons(title, reasons):
