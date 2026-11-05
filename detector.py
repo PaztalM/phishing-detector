@@ -66,17 +66,41 @@ def normalize(name):
         name = name.replace(fake, real)
     return name
 
+def check_sender(from_header):
+    reasons = []
+    display_name, address = parseaddr(from_header)
+    domain = address.split("@")[-1].lower()
+    real = real_domain(domain)
+    name_part = real.split(".")[0]
+    normalized = normalize(name_part)
+
+    for brand, official in KNOWN_BRANDS.items():
+        if real == official:
+           continue
+        if brand in normalized:
+            if brand in name_part:
+                reasons.append(f"domain {domain} uses the name {brand} but is not {official}")
+            else:
+                reasons.append(f"lookalike domain {domain} imitates {official}")     
+
+    return reasons
+
 def main():
     path = sys.argv[1]
     with open(path, encoding="utf-8") as f:
         text = f.read()
 
     msg = email.message_from_string(text)
-    display_name, address = parseaddr(msg.get("From", ""))
-    print(f"Sender: name '{display_name}', address {address}")
+
+    sender_reasons = check_sender(msg.get("From", ""))
+    print("Sender:")
+    if sender_reasons:
+        for r in sender_reasons:
+            print(f"  - {r}")
+    else:
+        print("  ok")
     print()
 
-    print(f"  normalized: {normalize(address)}")
         
     links= find_links(text)
     print(f"Links: found {len(links)}")
