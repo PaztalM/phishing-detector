@@ -9,6 +9,8 @@ KNOWN_BRANDS = {
     "apple": "apple.com",
 }
 
+SUSPICIOUS_TLDS = {"xyz", "top", "click", "zip"}
+
 #finds the links in the text
 def find_links(text):
     return re.findall(r"https?://[^\s]+", text)
@@ -26,12 +28,17 @@ def real_domain(host):
     parts = host.split(".")
     return ".".join(parts[-2:])
 
+#checks if the host pretends to be a known brand but has a different real domain
 def brand_mismatch(host):
     domain = real_domain(host)
     for brand, official in KNOWN_BRANDS.items():
         if brand in host and domain != official:
             return brand
     return None
+
+#checks if the host has a suspicious top-level domain
+def has_suspicious_tld(host):
+    return host.split(".")[-1] in SUSPICIOUS_TLDS
 
 def main():
     path = sys.argv[1]
@@ -48,7 +55,8 @@ def main():
         brand = brand_mismatch(host)
         if brand:
             print(f"    - pretends to be {brand}, real domain is {real_domain(host)}")
-
+        if has_suspicious_tld(host):
+            print(f"    - suspicious ending .{host.split('.')[-1]}")
 
 if __name__ == "__main__":
     main()    
