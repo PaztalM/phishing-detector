@@ -158,6 +158,16 @@ def print_reasons(title, reasons):
     else:
         print("  ok")
 
+def print_items(title, items):
+    print(f"{title}: found {len(items)}")
+    for name, reasons in items.items():
+        if reasons:
+            print(f"  SUSPICIOUS: {name}")
+            for r in reasons:
+                print(f"    - {r}")
+        else:
+            print(f"  ok: {name}")
+
 def main():
     path = sys.argv[1]
     with open(path, encoding="utf-8") as f:
@@ -167,19 +177,10 @@ def main():
     print_reasons("Sender", check_sender(msg.get("From", "")))
     print_reasons("Wording", check_wording(msg.get("Subject", ""), get_body(msg)))
 
-    for name in get_attachments(msg):
-        print(name, check_attachment(name))
-
-    links= find_links(text)
-    print(f"Links: found {len(links)}")
-    for link in links:
-        reasons = check_link(link)
-        if reasons:
-            print(f"  SUSPICIOUS: {link}")
-            for r in reasons:
-                print(f"    - {r}")
-        else:
-            print(f"  ok: {link}")
+    attachments = {name: check_attachment(name) for name in get_attachments(msg)}
+    links = {link: check_link(link) for link in find_links(text)}
+    print_items("Attachments", attachments)
+    print_items("Links", links)
 
 if __name__ == "__main__":
     main()    
