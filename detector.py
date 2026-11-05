@@ -150,6 +150,16 @@ def check_attachment(filename):
 
     return reasons
 
+def scan_email(text):
+    msg = email.message_from_string(text)
+    results = {
+        "sender": check_sender(msg.get("From", "")),
+        "wording": check_wording(msg.get("Subject", ""), get_body(msg)),
+        "attachments": {name: check_attachment(name) for name in get_attachments(msg)},
+        "links": {link: check_link(link) for link in find_links(text)},
+    }
+    return results
+
 def print_reasons(title, reasons):
     print(f"{title}:")
     if reasons:
@@ -173,14 +183,11 @@ def main():
     with open(path, encoding="utf-8") as f:
         text = f.read()
 
-    msg = email.message_from_string(text)
-    print_reasons("Sender", check_sender(msg.get("From", "")))
-    print_reasons("Wording", check_wording(msg.get("Subject", ""), get_body(msg)))
-
-    attachments = {name: check_attachment(name) for name in get_attachments(msg)}
-    links = {link: check_link(link) for link in find_links(text)}
-    print_items("Attachments", attachments)
-    print_items("Links", links)
+    result = scan_email(text)
+    print_reasons("Sender", result["sender"])
+    print_reasons("Wording", result["wording"])
+    print_items("Attachments", result["attachments"])
+    print_items("Links", result["links"])
 
 if __name__ == "__main__":
     main()    
