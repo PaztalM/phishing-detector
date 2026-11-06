@@ -40,6 +40,10 @@
     {% endif %}
   </div>
 
+  {% if not saved %}
+    <p class="error">This scan could not be saved to history.</p>
+  {% endif %}
+
   {{ reasons_list("Sender", result.sender) }}
   {{ reasons_list("History", result.history) }}
   {{ reasons_list("Wording", result.wording) }}
