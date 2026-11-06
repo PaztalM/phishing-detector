@@ -1,10 +1,12 @@
 from flask import Flask, render_template, request
 
 from detector import scan_email
+import db
 
 app = Flask(__name__)
 
 app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024  # 1 MB
+db.init_db()
 
 @app.get("/")
 def index():
@@ -22,7 +24,13 @@ def scan():
         return render_template("index.html", error="Please upload a file or paste an email."), 400        
 
     result = scan_email(text)
+    db.save_scan(result)
     return render_template("result.html", result=result)
+
+@app.get("/history")
+def history():
+    rows = db.get_history()
+    return render_template("history.html", rows=rows)
 
 @app.get("/health")
 def health():

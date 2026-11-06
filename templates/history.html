@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>Scan history</h2>
+
+  {% if error %}
+    <p class="error">{{ error }}</p>
+  {% endif %}
+
+  {% if rows %}
+    <table>
+      <tr>
+        <th>Time (UTC)</th>
+        <th>Sender</th>
+        <th>Subject</th>
+        <th>Score</th>
+        <th>Risk</th>
+      </tr>
+      {% for created_at, sender, subject, score, level, is_phishing in rows %}
+        <tr>
+          <td>{{ created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td>{{ sender }}</td>
+          <td>{{ subject }}</td>
+          <td>{{ score }}</td>
+          <td class="{{ level }}">{{ level }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p>No scans yet.</p>
+  {% endif %}
+{% endblock %}

@@ -11,10 +11,14 @@
     .high { background: #c62828; }
     .medium { background: #ef6c00; }
     .low { background: #2e7d32; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border-bottom: 1px solid #ddd; padding: 6px; text-align: left; }
+    nav { margin-bottom: 16px; }
   </style>
 </head>
 <body>
   <h1><a href="/">Phishing Detector</a></h1>
+  <nav><a href="/">Scan</a> | <a href="/history">History</a></nav>
   {% block content %}{% endblock %}
 </body>
 </html>
