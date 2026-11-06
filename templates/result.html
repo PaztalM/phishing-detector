@@ -1,5 +1,36 @@
 {% extends "base.html" %}
 
+{% macro reasons_list(title, reasons) %}
+  <h3>{{ title }}</h3>
+  {% if reasons %}
+    <ul>
+      {% for r in reasons %}
+        <li>{{ r }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>ok</p>
+  {% endif %}
+{% endmacro %}
+
+{% macro items_list(title, items) %}
+  <h3>{{ title }}: found {{ items|length }}</h3>
+  <ul>
+    {% for name, reasons in items.items() %}
+      <li>
+        {% if reasons %}<strong>SUSPICIOUS:</strong>{% else %}ok:{% endif %} {{ name }}
+        {% if reasons %}
+          <ul>
+            {% for r in reasons %}
+              <li>{{ r }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% endmacro %}
+
 {% block content %}
   <div class="banner {{ result.level }}">
     <h2>{{ "LIKELY PHISHING" if result.is_phishing else "Probably safe" }}</h2>
@@ -8,6 +39,11 @@
       <p>Some warning signs were found. Check carefully before you click or open anything.</p>
     {% endif %}
   </div>
+
+  {{ reasons_list("Sender", result.sender) }}
+  {{ reasons_list("Wording", result.wording) }}
+  {{ items_list("Attachments", result.attachments) }}
+  {{ items_list("Links", result.links) }}
 
   <p><a href="/">Scan another email</a></p>
 {% endblock %}
