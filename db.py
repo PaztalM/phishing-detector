@@ -34,6 +34,7 @@ def save_scan(result):
     indicators = {
         "sender": result["sender"],
         "wording": result["wording"],
+        "history": result["history"],
         "links": result["links"],
         "attachments": result["attachments"],
     }
@@ -51,4 +52,12 @@ def get_history(limit=50):
             """SELECT created_at, sender, subject, score, level, is_phishing
                FROM scans ORDER BY created_at DESC LIMIT %s""",
             (limit,),
-        ).fetchall()         
+        ).fetchall()      
+
+def sender_history(address):
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM scans WHERE sender = %s AND is_phishing",
+            (address,),
+        ).fetchone()
+    return row[0]       

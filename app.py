@@ -23,7 +23,7 @@ def scan():
     if not text.strip():
         return render_template("index.html", error="Please upload a file or paste an email."), 400        
 
-    result = scan_email(text)
+    result = scan_email(text, history_lookup=db.sender_history)
     db.save_scan(result)
     return render_template("result.html", result=result)
 

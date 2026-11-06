@@ -29,7 +29,7 @@ DOCUMENT_EXTENSIONS = {"pdf", "doc", "docx", "xls", "xlsx", "jpg", "png", "txt"}
 MACRO_EXTENSIONS = {"docm", "xlsm", "pptm"}
 ARCHIVE_EXTENSIONS = {"zip", "rar", "7z", "iso"}
 
-WEIGHTS = {"sender": 30, "links": 25, "attachments": 30, "wording": 10}
+WEIGHTS = {"sender": 30, "links": 25, "attachments": 30, "wording": 10, "history": 30}
 
 #finds the links in the text
 def find_links(text):
@@ -157,6 +157,7 @@ def calculate_score(results):
     if results["sender"]:
         score += WEIGHTS["sender"]
     score += len(results["wording"]) * WEIGHTS["wording"]
+    score += len(results["history"]) * WEIGHTS["history"]
     for reasons in results["attachments"].values():
         score += len(reasons) * WEIGHTS["attachments"]
     for reasons in results["links"].values():
@@ -170,9 +171,21 @@ def risk_level(score):
         return "medium"
     return "low"
 
-def scan_email(text):
+def check_history(address, history_lookup):
+    if history_lookup is None:
+        return []
+    count = history_lookup(address)
+    if count > 0:
+        return [f"sender {address} was flagged as phishing {count} time(s) before"]
+    return []
+
+def scan_email(text,history_lookup=None):
     msg = email.message_from_string(text)
+    address = parseaddr(msg.get("From", ""))[1].lower()
     results = {
+        "sender_address": address,
+        "subject": msg.get("Subject", ""),
+        "history": check_history(address, history_lookup),
         "sender": check_sender(msg.get("From", "")),
         "wording": check_wording(msg.get("Subject", ""), get_body(msg)),
         "attachments": {name: check_attachment(name) for name in get_attachments(msg)},
@@ -216,6 +229,7 @@ def main():
 
     print_reasons("Sender", result["sender"])
     print_reasons("Wording", result["wording"])
+    print_reasons("History", result["history"])
     print_items("Attachments", result["attachments"])
     print_items("Links", result["links"])
 
