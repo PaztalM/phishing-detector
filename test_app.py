@@ -1,8 +1,34 @@
 import io
 
+import pytest
+
+import db
 from app import app
 
 client = app.test_client()
+
+class FakeDB:
+    def __init__(self):
+        self.rows = []
+
+    def save_scan(self, result):
+        self.rows.append(result)
+
+    def get_history(self, limit=50):
+        return []
+
+    def sender_history(self, address):
+        return sum(1 for r in self.rows
+                   if r["sender_address"] == address and r["is_phishing"])
+
+
+@pytest.fixture(autouse=True)
+def fake_db(monkeypatch):
+    fake = FakeDB()
+    monkeypatch.setattr(db, "save_scan", fake.save_scan)
+    monkeypatch.setattr(db, "get_history", fake.get_history)
+    monkeypatch.setattr(db, "sender_history", fake.sender_history)
+    return fake
 
 PHISHING = """From: PayPal Security <security@paypa1-support.com>
 Subject: Your account will be suspended
