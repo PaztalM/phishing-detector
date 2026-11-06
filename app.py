@@ -4,6 +4,8 @@ from detector import scan_email
 
 app = Flask(__name__)
 
+app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024  # 1 MB
+
 @app.get("/")
 def index():
     return render_template("index.html")
