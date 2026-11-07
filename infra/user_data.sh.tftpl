@@ -1,0 +1,45 @@
+#!/bin/bash
+set -euo pipefail
+
+dnf install -y python3.12 python3.12-pip unzip jq
+
+mkdir -p /opt/phishing /var/log/phishing
+aws s3 cp "s3://${bucket}/app.zip" /opt/phishing/app.zip
+cd /opt/phishing
+unzip -o app.zip
+python3.12 -m venv venv
+venv/bin/pip install -r requirements.txt
+
+DB_PASSWORD=$(aws secretsmanager get-secret-value \
+  --secret-id "${secret_arn}" --region "${region}" \
+  --query SecretString --output text | jq -r .password)
+
+cat > /etc/phishing.env <<EOF
+DB_HOST=${db_host}
+DB_PORT=5432
+DB_NAME=phishing
+DB_USER=phish
+DB_PASSWORD='$DB_PASSWORD'
+EOF
+chmod 600 /etc/phishing.env
+
+cat > /etc/systemd/system/phishing.service <<'EOF'
+[Unit]
+Description=Phishing detector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/phishing
+EnvironmentFile=/etc/phishing.env
+ExecStart=/opt/phishing/venv/bin/gunicorn --workers 2 --bind 0.0.0.0:8000 app:app
+Restart=always
+StandardOutput=append:/var/log/phishing/app.log
+StandardError=append:/var/log/phishing/app.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now phishing
