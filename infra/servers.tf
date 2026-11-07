@@ -20,7 +20,7 @@ resource "aws_launch_template" "app" {
   user_data = base64encode(templatefile("${path.module}/user_data.sh.tftpl", {
     bucket     = aws_s3_bucket.code.id
     secret_arn = aws_db_instance.main.master_user_secret[0].secret_arn
-    region     = "us-east-1"
+    region     = "eu-north-1"
     db_host    = aws_db_instance.main.address
   }))
 
