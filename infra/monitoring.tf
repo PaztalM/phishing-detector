@@ -96,6 +96,49 @@ resource "aws_cloudwatch_dashboard" "main" {
             ["AWS/EC2", "CPUUtilization", "AutoScalingGroupName", local.asg_dim, { stat = "Maximum" }]
           ]
         }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 12
+        width  = 12
+        height = 6
+        properties = {
+          title  = "Server memory and disk (%)"
+          region = "eu-north-1"
+          period = 60
+          stat   = "Average"
+          metrics = [
+            ["PhishingDetector", "mem_used_percent", "AutoScalingGroupName", local.asg_dim],
+            ["PhishingDetector", "disk_used_percent", "AutoScalingGroupName", local.asg_dim]
+          ]
+        }
+      },
+      {
+        type   = "log"
+        x      = 0
+        y      = 18
+        width  = 12
+        height = 8
+        properties = {
+          title  = "Latest application logs"
+          region = "eu-north-1"
+          view   = "table"
+          query  = "SOURCE '${aws_cloudwatch_log_group.app.name}' | fields @timestamp, @logStream, @message | sort @timestamp desc | limit 50"
+        }
+      },
+      {
+        type   = "log"
+        x      = 12
+        y      = 18
+        width  = 12
+        height = 8
+        properties = {
+          title  = "Scans not saved to the database, per server"
+          region = "eu-north-1"
+          view   = "table"
+          query  = "SOURCE '${aws_cloudwatch_log_group.app.name}' | filter @message like /saved=False/ | stats count() as not_saved by @logStream"
+        }
       }
     ]
   })
