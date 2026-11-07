@@ -37,7 +37,8 @@ resource "aws_cloudwatch_dashboard" "main" {
           period = 60
           stat   = "Sum"
           metrics = [
-            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", local.alb_dim]
+            [{ expression = "FILL(m1, 0)", label = "Requests", id = "e1" }],
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", local.alb_dim, { id = "m1", visible = false }]
           ]
         }
       },
@@ -53,10 +54,14 @@ resource "aws_cloudwatch_dashboard" "main" {
           period = 60
           stat   = "Sum"
           metrics = [
-            ["AWS/ApplicationELB", "HTTPCode_Target_2XX_Count", "LoadBalancer", local.alb_dim],
-            ["AWS/ApplicationELB", "HTTPCode_Target_4XX_Count", "LoadBalancer", local.alb_dim],
-            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", local.alb_dim],
-            ["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", local.alb_dim]
+            [{ expression = "FILL(m1, 0)", label = "2XX (success)", id = "e1" }],
+            [{ expression = "FILL(m2, 0)", label = "4XX (client error)", id = "e2" }],
+            [{ expression = "FILL(m3, 0)", label = "5XX from the app", id = "e3" }],
+            [{ expression = "FILL(m4, 0)", label = "5XX from the ALB", id = "e4" }],
+            ["AWS/ApplicationELB", "HTTPCode_Target_2XX_Count", "LoadBalancer", local.alb_dim, { id = "m1", visible = false }],
+            ["AWS/ApplicationELB", "HTTPCode_Target_4XX_Count", "LoadBalancer", local.alb_dim, { id = "m2", visible = false }],
+            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", local.alb_dim, { id = "m3", visible = false }],
+            ["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", local.alb_dim, { id = "m4", visible = false }]
           ]
         }
       },
