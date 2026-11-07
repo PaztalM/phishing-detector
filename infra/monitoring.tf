@@ -100,3 +100,8 @@ resource "aws_cloudwatch_dashboard" "main" {
     ]
   })
 }
+
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/phishing/app"
+  retention_in_days = 7
+}
