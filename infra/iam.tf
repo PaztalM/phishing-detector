@@ -39,3 +39,17 @@ resource "aws_iam_role_policy" "read_db_secret" {
     }]
   })
 }
+
+resource "aws_iam_role_policy" "read_code" {
+  name = "read-code-bucket"
+  role = aws_iam_role.app.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "s3:GetObject"
+      Resource = "${aws_s3_bucket.code.arn}/*"
+    }]
+  })
+}
