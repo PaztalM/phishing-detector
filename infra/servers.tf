@@ -18,10 +18,11 @@ resource "aws_launch_template" "app" {
   }
 
   user_data = base64encode(templatefile("${path.module}/user_data.sh.tftpl", {
-    bucket     = aws_s3_bucket.code.id
-    secret_arn = aws_db_instance.main.master_user_secret[0].secret_arn
-    region     = "eu-north-1"
-    db_host    = aws_db_instance.main.address
+    bucket      = aws_s3_bucket.code.id
+    secret_arn  = aws_db_instance.main.master_user_secret[0].secret_arn
+    region      = "eu-north-1"
+    db_host     = aws_db_instance.main.address
+    app_version = aws_s3_object.app.etag
   }))
 
   tag_specifications {
@@ -43,6 +44,15 @@ resource "aws_autoscaling_group" "app" {
   launch_template {
     id      = aws_launch_template.app.id
     version = aws_launch_template.app.latest_version
+  }
+
+  instance_refresh {
+    strategy = "Rolling"
+
+    preferences {
+      min_healthy_percentage = 50
+      instance_warmup        = 300
+    }
   }
 
   health_check_type         = "ELB"
