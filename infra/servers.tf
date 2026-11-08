@@ -22,6 +22,7 @@ resource "aws_launch_template" "app" {
     secret_arn  = aws_db_instance.main.master_user_secret[0].secret_arn
     region      = "eu-north-1"
     db_host     = aws_db_instance.main.address
+    redis_host  = aws_elasticache_cluster.main.cache_nodes[0].address
     app_version = aws_s3_object.app.etag
   }))
 
