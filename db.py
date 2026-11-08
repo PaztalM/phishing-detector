@@ -16,6 +16,7 @@ def get_connection():
 
 def init_db():
     with get_connection() as conn:
+        conn.execute("SELECT pg_advisory_xact_lock(1)")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS scans (
                 id          SERIAL PRIMARY KEY,
