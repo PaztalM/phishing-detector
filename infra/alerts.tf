@@ -24,7 +24,7 @@ resource "aws_cloudwatch_metric_alarm" "healthy_hosts_low" {
   }
   statistic           = "Minimum"
   period              = 60
-  evaluation_periods  = 2
+  evaluation_periods  = 1
   comparison_operator = "LessThanThreshold"
   threshold           = 2
   treat_missing_data  = "breaching"
