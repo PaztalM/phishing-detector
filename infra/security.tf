@@ -55,3 +55,17 @@ resource "aws_security_group" "db" {
     security_groups = [aws_security_group.app.id]
   }
 }
+
+resource "aws_security_group" "cache" {
+  name        = "phishing-cache-sg"
+  description = "Cache: Redis from the app servers only"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "Redis from the app servers"
+    from_port       = 6379
+    to_port         = 6379
+    protocol        = "tcp"
+    security_groups = [aws_security_group.app.id]
+  }
+}
