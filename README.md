@@ -7,6 +7,7 @@ Built as a home assignment for the Cloud Monitoring Engineer (student) role at U
 
 - **Part 1:** a Python detector that scores an email for common phishing indicators, with a CLI and a Flask web UI.
 - **Part 2:** the same app running on two EC2 instances behind an Application Load Balancer, with RDS, created by Terraform and observable through a CloudWatch dashboard, alarms and logs.
+- **Bonus:** an ElastiCache (Redis) cache for the sender-history lookup, and CI with GitHub Actions.
 
 ---
 
@@ -23,12 +24,15 @@ flowchart LR
         end
         subgraph PRIV["Private subnets (2 AZs)"]
             RDS[(RDS PostgreSQL 16)]
+            REDIS[(ElastiCache Redis)]
         end
     end
     ALB -->|8000| EC2A
     ALB -->|8000| EC2B
     EC2A -->|5432| RDS
     EC2B -->|5432| RDS
+    EC2A -->|6379| REDIS
+    EC2B -->|6379| REDIS
     EC2A -.-> S3[(S3: app.zip)]
     EC2A -.-> SM[Secrets Manager<br/>DB password]
     EC2A -.-> CW[CloudWatch<br/>metrics + logs]
@@ -38,8 +42,8 @@ flowchart LR
 **Request path:** the browser reaches the ALB, which forwards to a healthy instance on port 8000.
 The instance runs `scan_email`, saves the result in RDS and returns the result page.
 
-**Security group chain:** internet -> ALB (80) -> app servers (8000, only from the ALB SG) -> RDS (5432, only from the app SG).
-The database has no public address and no outbound rules.
+**Security group chain:** internet -> ALB (80) -> app servers (8000, only from the ALB SG) -> RDS (5432) and ElastiCache (6379), both only from the app SG.
+The database and the cache have no public address and no outbound rules.
 
 ---
 
@@ -49,11 +53,14 @@ The database has no public address and no outbound rules.
 detector.py          Detection logic and CLI (scan_email)
 app.py               Flask web UI: /, /scan, /history, /health
 db.py                PostgreSQL access (psycopg 3), config from environment variables
+cache.py             Redis cache-aside for sender history, with graceful fallback
 templates/           Jinja templates (base, index, result, history)
 test_detector.py     Unit tests for the detection logic
 test_app.py          Web tests with an in-memory FakeDB (no PostgreSQL needed)
 sample_*.txt/.eml    Sample emails (phishing, safe, newsletter, attachment)
 requirements.txt     Pinned runtime dependencies
+.github/workflows/   CI: tests, terraform fmt and validate on every push
+docs/screenshots/    Screenshots from a full run
 infra/               Terraform for the AWS environment
 ```
 
@@ -70,6 +77,7 @@ infra/
   alb.tf              Load balancer, target group (/health), listener
   monitoring.tf       CloudWatch dashboard and log group
   alerts.tf           SNS topic, email subscription, alarms
+  cache.tf            ElastiCache subnet group, Redis cluster, cache_address output
   outputs.tf          app_url, db_address, db_secret_arn
 ```
 
@@ -122,6 +130,7 @@ python -m pytest -q
 
 Database settings come from `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` and `DB_PASSWORD`.
 Only `DB_PASSWORD` is required; the others default to `localhost`, `5432`, `phishing` and `phish`.
+`REDIS_HOST` is optional: without it the app runs without a cache and reads history straight from PostgreSQL.
 
 If the database is down, scanning still works: the result page shows that the scan was not saved, and `/history` returns 503.
 
@@ -160,6 +169,22 @@ The apply takes about 15 minutes (RDS is the slowest part). After it finishes:
 - Wait 3-5 minutes for the instances to bootstrap, then open the `app_url` output.
 - Confirm the SNS subscription email, or alarms will not be delivered. A new confirmation is sent after every destroy and apply.
 
+### Deploying during a demo
+
+RDS and ElastiCache take about 7-8 minutes to create, so they are created in advance (the assignment allows this for RDS), and everything else is deployed live in about 2.5 minutes:
+
+```powershell
+# Before the demo (quotes are required in PowerShell)
+terraform plan "-target=aws_db_instance.main" "-target=aws_elasticache_cluster.main" -out=tfplan
+terraform apply tfplan
+
+# During the demo
+terraform plan -out=tfplan
+terraform apply tfplan
+```
+
+The ALB address changes on every deployment; always take it from `terraform output -raw app_url`.
+
 ### Deploying code changes
 
 Commit, rebuild the zip, and apply. The zip's `etag` is part of the launch template, so a code change creates a new template version and triggers a rolling **instance refresh**: one instance at a time, keeping at least one healthy, so the site stays up.
@@ -177,8 +202,8 @@ terraform apply tfplan
 1. Installs Python 3.12 and the CloudWatch agent.
 2. Downloads `app.zip` from S3 using the instance role.
 3. Creates a venv and installs `requirements.txt`.
-4. Reads the database password from Secrets Manager and writes `/etc/phishing.env` (mode 600).
-5. Runs the app with gunicorn (2 workers) as a systemd service with `Restart=always`.
+4. Reads the database password from Secrets Manager and writes `/etc/phishing.env` (mode 600, readable only by root; systemd loads it before dropping privileges), including `REDIS_HOST`.
+5. Runs the app with gunicorn (2 workers) as a systemd service with `Restart=always`, as an unprivileged `phishing` user.
 6. Starts the CloudWatch agent for memory, disk and the application log.
 
 ---
@@ -217,6 +242,34 @@ Instead, every scan logs `saved=True/False`, and the dashboard counts `saved=Fal
 
 ---
 
+## Caching (bonus: ElastiCache)
+
+Every scan asks "how many times was this sender flagged before?". That lookup now uses **cache-aside** with Redis on ElastiCache:
+
+1. Read `history:<sender>` from Redis. A hit returns immediately.
+2. On a miss, query PostgreSQL and store the result for 5 minutes (TTL).
+3. When a phishing scan is saved, delete that sender's key, because the count changed (invalidation).
+
+Design choices:
+- **The cache can never break a scan.** Redis calls time out after 0.5 seconds, and any cache error falls back to PostgreSQL. RDS is the source of truth; the cache is a copy that rebuilds itself.
+- **Single node, no replication.** Losing the cache loses no data, only speed for a few minutes (a cold cache).
+- **Shared by both instances,** so a value cached by one server is a hit on the other.
+- **Trade-off:** invalidation runs on every phishing scan, so repeat phishing senders always miss. The cache mostly saves queries for legitimate senders, which are most traffic. Incrementing the cached value instead of deleting it would avoid that, at the cost of harder correctness under concurrent writes.
+
+The dashboard shows `CacheHits` and `CacheMisses`. Scanning a safe email three times gives one miss and two hits.
+
+---
+
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and on pull requests:
+- **python:** installs `requirements.txt` and runs the tests (no database needed, thanks to the in-memory FakeDB).
+- **terraform:** builds `app.zip` with `git archive` (required by `filemd5`), then `terraform fmt -check`, `init -backend=false` and `validate`.
+
+CI has no AWS credentials and does not run `plan`: the state is local, and long-lived AWS keys in GitHub were avoided on purpose. A team setup would keep state in S3 and give CI a read-only role through GitHub OIDC, so every pull request gets a plan.
+
+---
+
 ## Security and reliability decisions
 
 - **No secrets in code, Git or Terraform state.** RDS uses `manage_master_user_password`, so AWS generates and stores the password in Secrets Manager. Instances read it at boot.
@@ -227,13 +280,15 @@ Instead, every scan logs `saved=True/False`, and the dashboard counts `saved=Fal
 - **Temporary credentials only** on the workstation (`aws login`), no long-term access keys.
 - **Self-healing.** The ASG keeps two instances across two AZs and replaces any instance that fails the ALB health check. Tested by terminating an instance: the site stayed up with no 5XX errors, the ALARM email arrived about 4 minutes later, and the OK email 2 minutes after that, once the replacement was healthy.
 - **Graceful degradation.** Scans keep working when the database is unavailable.
+- **Unprivileged app process.** gunicorn runs as a `phishing` system user with no login shell, not as root. It can read the code but not change it, and cannot read the secrets file.
+- **Safe concurrent startup.** Both instances create the schema at boot; a PostgreSQL advisory lock (`pg_advisory_xact_lock`) serializes it, so they no longer race on `CREATE TABLE IF NOT EXISTS`.
 - **No NAT gateway.** Instances live in public subnets with public IPs but accept traffic only from the ALB. This saves about $33 per month.
 
 ---
 
 ## Cost and teardown
 
-The running environment costs roughly $2 per day (ALB, two `t3.micro`, `db.t4g.micro`, public IPv4 addresses). It is destroyed at the end of every work session.
+The running environment costs roughly $2.50 per day (ALB, two `t3.micro`, `db.t4g.micro`, `cache.t3.micro`, public IPv4 addresses). It is destroyed at the end of every work session.
 
 ```powershell
 cd infra
@@ -312,6 +367,22 @@ The ALARM and OK emails for the same event:
 
 ![Alarm emails](docs/screenshots/07-alarm-emails.png)
 
+### Hardening and caching
+
+Both instances log their gunicorn control socket under `/var/lib/phishing`, so gunicorn runs as the unprivileged user; a search for `already exists` returns nothing, so the schema lock works:
+
+![Hardening](docs/screenshots/13-hardening.png)
+
+Cache hits and misses after scanning a safe email three times and a phishing email twice:
+
+![Cache](docs/screenshots/12-cache.png)
+
+### CI
+
+Both CI jobs passing on GitHub Actions:
+
+![CI](docs/screenshots/11-ci.png)
+
 ### Teardown
 
 `terraform destroy` and the checks in AWS that nothing is left:
@@ -330,4 +401,5 @@ The ALARM and OK emails for the same event:
 - History counts by exact sender address. Counting by domain would catch attackers who rotate addresses.
 - Building and uploading `app.zip` is manual. A CI pipeline (GitHub Actions) would test, package and deploy on every push.
 - Terraform state is local. A team would use a remote backend (S3 with locking).
-- Bonus items not implemented: ElastiCache, a Gmail add-on.
+- The Redis cache has no AUTH token and no in-transit encryption; it relies on the private subnet and its security group. Production would enable both.
+- Bonus item not implemented: a Gmail add-on. It would need an HTTPS JSON API and is a separate product, so the infrastructure-related bonus (ElastiCache) was chosen.
