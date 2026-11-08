@@ -139,6 +139,23 @@ resource "aws_cloudwatch_dashboard" "main" {
           view   = "table"
           query  = "SOURCE '${aws_cloudwatch_log_group.app.name}' | filter @message like /saved=False/ | stats count() as not_saved by @logStream"
         }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 26
+        width  = 12
+        height = 6
+        properties = {
+          title  = "Cache hits vs misses"
+          region = "eu-north-1"
+          period = 60
+          stat   = "Sum"
+          metrics = [
+            ["AWS/ElastiCache", "CacheHits", "CacheClusterId", aws_elasticache_cluster.main.cluster_id, "CacheNodeId", "0001"],
+            ["AWS/ElastiCache", "CacheMisses", "CacheClusterId", aws_elasticache_cluster.main.cluster_id, "CacheNodeId", "0001"]
+          ]
+        }
       }
     ]
   })
