@@ -3,6 +3,7 @@ from flask import Flask, render_template, request
 
 from detector import scan_email
 import db
+import cache
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("phishing")
@@ -22,7 +23,7 @@ def index():
 
 def safe_sender_history(address):
     try:
-        return db.sender_history(address)
+        return cache.cached_history(address, db.sender_history)
     except Exception as e:
         log.warning("history lookup failed: %s", e)
         return 0
@@ -43,6 +44,8 @@ def scan():
     saved = True
     try:
         db.save_scan(result)
+        if result["is_phishing"]:
+            cache.forget_history(result["sender_address"])
     except Exception as e:
         saved = False
         log.error("saving scan failed: %s", e)
